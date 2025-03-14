@@ -1,0 +1,29 @@
+{
+  "scanner": {
+    "ip": "192.168.1.100",
+    "protocol": "escl",
+    "port": 443,
+    "resolution": 300,
+    "mode": "color"
+  },
+  "storage": {
+    "path": "/data/scan",
+    "categories": ["invoices", "receipts", "letters", "misc"]
+  },
+  "ocr": {
+    "enabled": true,
+    "language": "eng",
+    "deskew": true,
+    "clean": true,
+    "optimize": 3
+  },
+  "discord": {
+    "webhook_url": "",
+    "enabled": false
+  },
+  "ui": {
+    "page_size": 10,
+    "default_view": "grid",
+    "theme": "light"
+  }
+}
