@@ -1,0 +1,29 @@
+{
+  "scanner": {
+    "ip": "192.168.2.82",
+    "protocol": "escl",
+    "port": 443,
+    "resolution": 300,
+    "mode": "color"
+  },
+  "storage": {
+    "path": "/data/scan",
+    "categories": ["invoices", "receipts", "letters", "misc", "documents"]
+  },
+  "ocr": {
+    "enabled": true,
+    "language": "eng",
+    "deskew": true,
+    "clean": true,
+    "optimize": 3
+  },
+  "discord": {
+    "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+    "enabled": true
+  },
+  "ui": {
+    "page_size": 20,
+    "default_view": "list",
+    "theme": "dark"
+  }
+}
