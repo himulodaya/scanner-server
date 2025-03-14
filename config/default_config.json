@@ -19,8 +19,10 @@
   },
   "discord": {
     "webhook_url": "",
-    "enabled": false
-  },
+    "enabled": False,
+    "send_as_pdf": True,  # True for searchable PDF, False for JPG
+    "include_preview": True  # Whether to include a text preview
+   },
   "ui": {
     "page_size": 10,
     "default_view": "grid",
