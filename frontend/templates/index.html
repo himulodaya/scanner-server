@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Scanner Server - Home{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>Scanner & Printer Server</h1>
+    <p>Scan, OCR, and print documents with ease</p>
+</div>
+
+<div class="sections">
+    <div class="section">
+        <h2>Scanner Options</h2>
+        <div class="card-container">
+            <div class="card">
+                <h3>Single Page Scan</h3>
+                <p>Scan a single document with OCR processing</p>
+                <a href="/api/scan/single" class="button">Start Scan</a>
+            </div>
+            
+            <div class="card">
+                <h3>Multi-Page Scan</h3>
+                <p>Scan multiple pages into a single document</p>
+                <a href="/api/scan/start_multi" class="button blue">Start Multi-Page Scan</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>Print Document</h2>
+        <div class="card print-card">
+            <form action="/api/printer/print" method="post" enctype="multipart/form-data" id="printForm">
+                <div class="form-group">
+                    <label for="file">Select file to print:</label>
+                    <input type="file" id="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.txt,.doc,.docx">
+                </div>
+                
+                <div class="form-group">
+                    <label for="printer">Select printer:</label>
+                    <select id="printer" name="printer" required>
+                        <option value="">Loading printers...</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="button orange">Print Document</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>Recent Scans</h2>
+        <div class="card">
+            <div id="recentScans">
+                <p>Loading recent scans...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script
