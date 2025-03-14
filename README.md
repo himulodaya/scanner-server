@@ -23,7 +23,8 @@ A self-hosted solution to scan, print, and manage your documents with ease!
 ## 📱 NFC Support
 Create an NFC tag with URL: http://your-server-ip:5000/nfc/single_scan
 Just tap your phone on the tag to start scanning - no app needed!
-⚙️ Features
+
+#⚙️ Features
 
 - 📑 Single-page scanning for quick documents
 - 📚 Multi-page scanning to create complete documents
