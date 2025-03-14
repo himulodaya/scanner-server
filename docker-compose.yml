@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  scanner-server:
+    build: .
+    container_name: scanner-server
+    ports:
+      - "5000:5000"
+      - "631:631"
+    volumes:
+      - ./config:/app/config
+      - scanner_data:/data/scan
+    environment:
+      - CONFIG_DIR=/app/config
+      - SCANNER_IP=192.168.2.82
+    restart: unless-stopped
+    privileged: true  # Needed for SANE scanner access
+
+volumes:
+  scanner_data:
