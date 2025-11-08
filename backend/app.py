@@ -1,24 +1,51 @@
 import os
 import logging
+import sys
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_from_directory
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import HTTPException
+from dotenv import load_dotenv
 from .config import load_config
 from .api import scanner, printer, settings
 
+# Load environment variables
+load_dotenv()
+
 # Configure logging
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=getattr(logging, log_level, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
 )
 logger = logging.getLogger(__name__)
 
 # Create Flask app
-app = Flask(__name__, 
+app = Flask(__name__,
             static_folder='../frontend/static',
             template_folder='../frontend/templates')
 
+# Security configuration
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(32))
+
+# Rate limiting to prevent abuse
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
 # Load configuration
 config = load_config()
+
+logger.info("Scanner Server starting up...")
+logger.info(f"Configuration loaded from: {os.getenv('CONFIG_DIR', './config')}")
 
 # Create routes
 @app.route('/')
@@ -149,9 +176,78 @@ def nfc_multi_scan():
 @app.route('/files/<path:filename>')
 def download_file(filename):
     """Download scanned files"""
-    config = load_config()
-    storage_path = config["storage"]["path"]
-    return send_from_directory(storage_path, filename)
+    try:
+        config = load_config()
+        storage_path = config["storage"]["path"]
+
+        # Security: Prevent directory traversal
+        safe_filename = secure_filename(filename)
+        if not safe_filename or safe_filename != filename:
+            logger.warning(f"Attempted directory traversal with filename: {filename}")
+            return jsonify({"error": "Invalid filename"}), 400
+
+        return send_from_directory(storage_path, safe_filename)
+    except Exception as e:
+        logger.exception(f"Error downloading file: {str(e)}")
+        return jsonify({"error": "File not found"}), 404
+
+# Error handlers
+@app.errorhandler(400)
+def bad_request(e):
+    """Handle bad request errors"""
+    logger.warning(f"Bad request: {str(e)}")
+    return jsonify({"error": "Bad request", "message": str(e)}), 400
+
+@app.errorhandler(404)
+def not_found(e):
+    """Handle not found errors"""
+    return jsonify({"error": "Not found", "message": str(e)}), 404
+
+@app.errorhandler(413)
+def request_entity_too_large(e):
+    """Handle file too large errors"""
+    logger.warning("File upload too large")
+    return jsonify({"error": "File too large", "message": "Maximum file size is 50MB"}), 413
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Handle rate limit errors"""
+    logger.warning(f"Rate limit exceeded: {get_remote_address()}")
+    return jsonify({"error": "Rate limit exceeded", "message": str(e.description)}), 429
+
+@app.errorhandler(500)
+def internal_error(e):
+    """Handle internal server errors"""
+    logger.exception(f"Internal server error: {str(e)}")
+    return jsonify({"error": "Internal server error", "message": "An unexpected error occurred"}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle all uncaught exceptions"""
+    # Pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return e
+
+    # Log the error
+    logger.exception(f"Unhandled exception: {str(e)}")
+
+    # Return JSON error for API requests
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Internal server error", "message": "An unexpected error occurred"}), 500
+
+    # Return error page for web requests
+    return render_template('error.html', error="An unexpected error occurred"), 500
+
+# Health check endpoint
+@app.route('/health')
+@limiter.exempt
+def health_check():
+    """Health check endpoint for Docker/monitoring"""
+    return jsonify({
+        "status": "healthy",
+        "version": "2.0.0",
+        "timestamp": None
+    }), 200
 
 # Main entry point
 if __name__ == '__main__':
@@ -159,6 +255,14 @@ if __name__ == '__main__':
     storage_path = config["storage"]["path"]
     os.makedirs(storage_path, exist_ok=True)
     os.makedirs(os.path.join(storage_path, "temp"), exist_ok=True)
-    
+
+    # Check debug mode from environment
+    debug_mode = os.getenv('FLASK_DEBUG', '0') == '1'
+
+    if debug_mode:
+        logger.warning("Running in DEBUG mode - DO NOT use in production!")
+    else:
+        logger.info("Running in production mode")
+
     # Start the app
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
