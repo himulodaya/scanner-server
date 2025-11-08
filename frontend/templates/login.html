@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Scanner Server{% endblock %}
+
+{% block head %}
+<style>
+    .login-container {
+        max-width: 500px;
+        margin: 4rem auto;
+        padding: 3rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .login-container h1 {
+        margin-bottom: 1rem;
+        color: #333;
+    }
+
+    .login-container p {
+        margin-bottom: 2rem;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .login-button {
+        display: inline-block;
+        padding: 1rem 2rem;
+        background-color: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        transition: background-color 0.3s;
+    }
+
+    .login-button:hover {
+        background-color: #0056b3;
+    }
+
+    .info-box {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: #e9ecef;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        color: #555;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h1>Authentication Required</h1>
+    <p>This Scanner Server instance is protected with OAuth authentication. Please sign in to continue.</p>
+
+    <a href="/auth/login" class="login-button">Sign In with OAuth</a>
+
+    <div class="info-box">
+        <strong>Note:</strong> You need to be authorized to access this application. Contact your administrator if you don't have access.
+    </div>
+</div>
+{% endblock %}
