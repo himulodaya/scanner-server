@@ -1,26 +1,434 @@
-<div class="section">
-    <h2>Discord Integration</h2>
-    <div class="form-group">
-        <label for="discord_enabled">Enable Discord:</label>
-        <input type="checkbox" id="discord_enabled" name="discord_enabled" {{ 'checked' if config.discord.enabled else '' }}>
+{% extends "base.html" %}
+
+{% block title %}Settings - Scanner Server{% endblock %}
+
+{% block head %}
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+    }
+
+    .section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .section h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #555;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="password"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+
+    .form-group input[type="checkbox"] {
+        width: auto;
+        margin-right: 0.5rem;
+    }
+
+    .form-group small {
+        display: block;
+        margin-top: 0.5rem;
+        color: #666;
+        font-size: 0.875rem;
+    }
+
+    .button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .button.blue {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .button.blue:hover {
+        background-color: #0056b3;
+    }
+
+    .button.green {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .button.green:hover {
+        background-color: #218838;
+    }
+
+    .button.red {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .button.red:hover {
+        background-color: #c82333;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+
+    .alert.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .provider-presets {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .provider-preset {
+        padding: 0.5rem 1rem;
+        background: #e9ecef;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.3s;
+    }
+
+    .provider-preset:hover {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+
+    .hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <h1>Settings</h1>
+
+    <div id="alert-container"></div>
+
+    <!-- OAuth Authentication Section -->
+    <div class="section">
+        <h2>OAuth Authentication</h2>
+        <div class="form-group">
+            <label for="oauth_enabled">
+                <input type="checkbox" id="oauth_enabled" name="oauth_enabled" {{ 'checked' if config.oauth.enabled else '' }}>
+                Enable OAuth Authentication
+            </label>
+            <small>Secure your scanner server instance with OAuth 2.0 authentication</small>
+        </div>
+
+        <div id="oauth_config" class="{{ 'hidden' if not config.oauth.enabled else '' }}">
+            <div class="form-group">
+                <label for="oauth_provider">OAuth Provider:</label>
+                <select id="oauth_provider" name="oauth_provider">
+                    <option value="custom" {{ 'selected' if config.oauth.provider == 'custom' else '' }}>Custom Provider</option>
+                    <option value="google" {{ 'selected' if config.oauth.provider == 'google' else '' }}>Google</option>
+                    <option value="github" {{ 'selected' if config.oauth.provider == 'github' else '' }}>GitHub</option>
+                    <option value="azure" {{ 'selected' if config.oauth.provider == 'azure' else '' }}>Azure AD</option>
+                </select>
+                <small>Choose a predefined provider or use custom OAuth settings</small>
+            </div>
+
+            <div class="form-group">
+                <label for="oauth_client_id">Client ID:</label>
+                <input type="text" id="oauth_client_id" name="oauth_client_id" value="{{ config.oauth.client_id }}">
+                <small>OAuth application client ID from your provider</small>
+            </div>
+
+            <div class="form-group">
+                <label for="oauth_client_secret">Client Secret:</label>
+                <input type="password" id="oauth_client_secret" name="oauth_client_secret" value="{{ config.oauth.client_secret }}">
+                <small>OAuth application client secret (keep this secure!)</small>
+            </div>
+
+            <div id="azure_tenant" class="{{ 'hidden' if config.oauth.provider != 'azure' else '' }}">
+                <div class="form-group">
+                    <label for="oauth_tenant_id">Azure Tenant ID:</label>
+                    <input type="text" id="oauth_tenant_id" name="oauth_tenant_id" value="{{ config.oauth.get('tenant_id', '') }}">
+                    <small>Your Azure AD tenant ID (use 'common' for multi-tenant)</small>
+                </div>
+            </div>
+
+            <div id="custom_urls" class="{{ 'hidden' if config.oauth.provider != 'custom' else '' }}">
+                <div class="form-group">
+                    <label for="oauth_authorization_url">Authorization URL:</label>
+                    <input type="text" id="oauth_authorization_url" name="oauth_authorization_url" value="{{ config.oauth.authorization_url }}">
+                    <small>OAuth authorization endpoint URL</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="oauth_token_url">Token URL:</label>
+                    <input type="text" id="oauth_token_url" name="oauth_token_url" value="{{ config.oauth.token_url }}">
+                    <small>OAuth token endpoint URL</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="oauth_userinfo_url">User Info URL:</label>
+                    <input type="text" id="oauth_userinfo_url" name="oauth_userinfo_url" value="{{ config.oauth.userinfo_url }}">
+                    <small>OAuth userinfo endpoint URL</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="oauth_redirect_uri">Redirect URI:</label>
+                <input type="text" id="oauth_redirect_uri" name="oauth_redirect_uri" value="{{ config.oauth.redirect_uri }}">
+                <small>Must match the redirect URI configured in your OAuth app</small>
+            </div>
+
+            <div class="form-group">
+                <label for="oauth_scope">OAuth Scope:</label>
+                <input type="text" id="oauth_scope" name="oauth_scope" value="{{ config.oauth.scope }}">
+                <small>Space-separated scopes (e.g., "openid profile email")</small>
+            </div>
+
+            <div class="form-group">
+                <label for="oauth_allowed_users">Allowed Users (Email Addresses):</label>
+                <textarea id="oauth_allowed_users" name="oauth_allowed_users" rows="4" placeholder="user1@example.com&#10;user2@example.com">{{ config.oauth.allowed_users | join('\n') if config.oauth.allowed_users else '' }}</textarea>
+                <small>One email per line. Leave empty to allow all authenticated users.</small>
+            </div>
+
+            <div class="form-group">
+                <button type="button" id="test_oauth" class="button blue">Test OAuth Config</button>
+                <span id="oauth_test_result"></span>
+            </div>
+        </div>
     </div>
-    <div class="form-group">
-        <label for="discord_webhook">Discord Webhook URL:</label>
-        <input type="text" id="discord_webhook" name="discord_webhook" value="{{ config.discord.webhook_url }}">
+
+    <!-- Discord Integration Section -->
+    <div class="section">
+        <h2>Discord Integration</h2>
+        <div class="form-group">
+            <label for="discord_enabled">
+                <input type="checkbox" id="discord_enabled" name="discord_enabled" {{ 'checked' if config.discord.enabled else '' }}>
+                Enable Discord Notifications
+            </label>
+        </div>
+        <div class="form-group">
+            <label for="discord_webhook">Discord Webhook URL:</label>
+            <input type="text" id="discord_webhook" name="discord_webhook" value="{{ config.discord.webhook_url }}">
+        </div>
+        <div class="form-group">
+            <label for="discord_format">Send documents as:</label>
+            <select id="discord_format" name="discord_format">
+                <option value="pdf" {{ 'selected' if config.discord.send_as_pdf else '' }}>Searchable PDF</option>
+                <option value="jpg" {{ 'selected' if not config.discord.send_as_pdf else '' }}>JPG Image</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="discord_preview">
+                <input type="checkbox" id="discord_preview" name="discord_preview" {{ 'checked' if config.discord.include_preview else '' }}>
+                Include text preview
+            </label>
+        </div>
+        <div class="form-group">
+            <button type="button" id="test_discord" class="button blue">Test Discord</button>
+            <span id="discord_test_result"></span>
+        </div>
     </div>
+
+    <!-- Save Button -->
     <div class="form-group">
-        <label for="discord_format">Send documents as:</label>
-        <select id="discord_format" name="discord_format">
-            <option value="pdf" {{ 'selected' if config.discord.send_as_pdf else '' }}>Searchable PDF</option>
-            <option value="jpg" {{ 'selected' if not config.discord.send_as_pdf else '' }}>JPG Image</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="discord_preview">Include text preview:</label>
-        <input type="checkbox" id="discord_preview" name="discord_preview" {{ 'checked' if config.discord.include_preview else '' }}>
-    </div>
-    <div class="form-group">
-        <button type="button" id="test_discord" class="button blue">Test Discord</button>
-        <span id="discord_test_result"></span>
+        <button type="button" id="save_settings" class="button green">Save All Settings</button>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Toggle OAuth config visibility
+    document.getElementById('oauth_enabled').addEventListener('change', function() {
+        const configDiv = document.getElementById('oauth_config');
+        if (this.checked) {
+            configDiv.classList.remove('hidden');
+        } else {
+            configDiv.classList.add('hidden');
+        }
+    });
+
+    // Toggle custom URLs and Azure tenant based on provider
+    document.getElementById('oauth_provider').addEventListener('change', function() {
+        const customUrls = document.getElementById('custom_urls');
+        const azureTenant = document.getElementById('azure_tenant');
+
+        if (this.value === 'custom') {
+            customUrls.classList.remove('hidden');
+        } else {
+            customUrls.classList.add('hidden');
+        }
+
+        if (this.value === 'azure') {
+            azureTenant.classList.remove('hidden');
+        } else {
+            azureTenant.classList.add('hidden');
+        }
+    });
+
+    // Test OAuth configuration
+    document.getElementById('test_oauth').addEventListener('click', function() {
+        const resultSpan = document.getElementById('oauth_test_result');
+        resultSpan.textContent = 'Testing...';
+
+        const oauthSettings = {
+            provider: document.getElementById('oauth_provider').value,
+            client_id: document.getElementById('oauth_client_id').value,
+            client_secret: document.getElementById('oauth_client_secret').value,
+            authorization_url: document.getElementById('oauth_authorization_url').value,
+            token_url: document.getElementById('oauth_token_url').value,
+            userinfo_url: document.getElementById('oauth_userinfo_url').value,
+            tenant_id: document.getElementById('oauth_tenant_id').value
+        };
+
+        fetch('/api/settings/test_oauth', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(oauthSettings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultSpan.textContent = '✓ ' + data.message;
+                resultSpan.style.color = 'green';
+            } else {
+                resultSpan.textContent = '✗ ' + data.error;
+                resultSpan.style.color = 'red';
+            }
+        })
+        .catch(error => {
+            resultSpan.textContent = '✗ Error: ' + error;
+            resultSpan.style.color = 'red';
+        });
+    });
+
+    // Test Discord webhook
+    document.getElementById('test_discord').addEventListener('click', function() {
+        const resultSpan = document.getElementById('discord_test_result');
+        resultSpan.textContent = 'Testing...';
+
+        const webhookUrl = document.getElementById('discord_webhook').value;
+
+        fetch('/api/settings/test_discord', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ webhook_url: webhookUrl })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultSpan.textContent = '✓ Webhook working!';
+                resultSpan.style.color = 'green';
+            } else {
+                resultSpan.textContent = '✗ ' + (data.error || 'Failed');
+                resultSpan.style.color = 'red';
+            }
+        })
+        .catch(error => {
+            resultSpan.textContent = '✗ Error: ' + error;
+            resultSpan.style.color = 'red';
+        });
+    });
+
+    // Save all settings
+    document.getElementById('save_settings').addEventListener('click', function() {
+        const alertContainer = document.getElementById('alert-container');
+
+        // Parse allowed users from textarea
+        const allowedUsersText = document.getElementById('oauth_allowed_users').value;
+        const allowedUsers = allowedUsersText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
+        const settings = {
+            oauth: {
+                enabled: document.getElementById('oauth_enabled').checked,
+                provider: document.getElementById('oauth_provider').value,
+                client_id: document.getElementById('oauth_client_id').value,
+                client_secret: document.getElementById('oauth_client_secret').value,
+                authorization_url: document.getElementById('oauth_authorization_url').value,
+                token_url: document.getElementById('oauth_token_url').value,
+                userinfo_url: document.getElementById('oauth_userinfo_url').value,
+                redirect_uri: document.getElementById('oauth_redirect_uri').value,
+                scope: document.getElementById('oauth_scope').value,
+                tenant_id: document.getElementById('oauth_tenant_id').value,
+                allowed_users: allowedUsers
+            },
+            discord: {
+                enabled: document.getElementById('discord_enabled').checked,
+                webhook_url: document.getElementById('discord_webhook').value,
+                send_as_pdf: document.getElementById('discord_format').value === 'pdf',
+                include_preview: document.getElementById('discord_preview').checked
+            }
+        };
+
+        fetch('/api/settings/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alertContainer.innerHTML = '<div class="alert success">' + data.message + '</div>';
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 3000);
+            } else {
+                alertContainer.innerHTML = '<div class="alert error">' + data.error + '</div>';
+            }
+        })
+        .catch(error => {
+            alertContainer.innerHTML = '<div class="alert error">Error: ' + error + '</div>';
+        });
+    });
+</script>
+{% endblock %}
