@@ -1,5 +1,6 @@
 import logging
 from ..config import load_config, update_config, save_config
+from ..auth import test_oauth_config
 
 logger = logging.getLogger(__name__)
 
@@ -78,18 +79,18 @@ def test_discord_webhook(webhook_url):
     try:
         import requests
         import json
-        
+
         payload = {
             "content": "This is a test message from Scanner Server.",
             "username": "Scanner Server Test"
         }
-        
+
         response = requests.post(
             webhook_url,
             data=json.dumps(payload),
             headers={"Content-Type": "application/json"}
         )
-        
+
         return {
             "success": response.status_code == 204,
             "status_code": response.status_code,
@@ -101,3 +102,7 @@ def test_discord_webhook(webhook_url):
             "success": False,
             "error": str(e)
         }
+
+def test_oauth(oauth_settings):
+    """Test OAuth configuration"""
+    return test_oauth_config(oauth_settings)

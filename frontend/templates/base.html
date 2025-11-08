@@ -17,6 +17,9 @@
                 <ul>
                     <li><a href="/">Home</a></li>
                     <li><a href="/api/settings">Settings</a></li>
+                    {% if current_user.is_authenticated %}
+                    <li><a href="/auth/logout">Logout ({{ current_user.email }})</a></li>
+                    {% endif %}
                 </ul>
             </nav>
         </div>

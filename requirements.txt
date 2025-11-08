@@ -14,6 +14,10 @@ gunicorn==23.0.0
 # Environment Configuration
 python-dotenv==1.0.1
 
+# Authentication
+Flask-Login==0.6.3
+Authlib==1.3.2
+
 # Input Validation
 Flask-Limiter==3.8.0
 

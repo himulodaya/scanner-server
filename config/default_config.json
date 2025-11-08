@@ -19,10 +19,22 @@
   },
   "discord": {
     "webhook_url": "",
-    "enabled": False,
-    "send_as_pdf": True,  #True for searchable PDF, False for JPG
-    "include_preview": True  #Whether to include a text preview
+    "enabled": false,
+    "send_as_pdf": true,
+    "include_preview": true
    },
+  "oauth": {
+    "enabled": false,
+    "provider": "custom",
+    "client_id": "",
+    "client_secret": "",
+    "authorization_url": "",
+    "token_url": "",
+    "userinfo_url": "",
+    "redirect_uri": "http://localhost:5000/auth/callback",
+    "scope": "openid profile email",
+    "allowed_users": []
+  },
   "ui": {
     "page_size": 10,
     "default_view": "grid",
