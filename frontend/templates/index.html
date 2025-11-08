@@ -8,6 +8,40 @@
     <p>Scan, OCR, and print documents with ease</p>
 </div>
 
+<!-- Device Status Section -->
+<div class="device-status">
+    <h2>Connected Devices</h2>
+    <div class="device-grid">
+        <!-- Printer Status -->
+        <div class="device-indicator" id="printerStatus">
+            <h3>
+                <span class="status-dot" id="printerDot"></span>
+                Printer
+            </h3>
+            <div class="device-info" id="printerInfo">
+                <p class="loading">Loading printer status...</p>
+            </div>
+            <div class="device-select" id="printerSelectContainer" style="display: none;">
+                <label for="printerDropdown">Select Printer:</label>
+                <select id="printerDropdown">
+                    <option value="">No printers available</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Scanner Status -->
+        <div class="device-indicator" id="scannerStatus">
+            <h3>
+                <span class="status-dot" id="scannerDot"></span>
+                Scanner
+            </h3>
+            <div class="device-info" id="scannerInfo">
+                <p class="loading">Loading scanner status...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="sections">
     <div class="section">
         <h2>Scanner Options</h2>
@@ -59,4 +93,143 @@
 {% endblock %}
 
 {% block scripts %}
-<script
+<script>
+    // Store selected printer globally
+    let selectedPrinter = null;
+
+    // Fetch and display printer status
+    async function loadPrinters() {
+        try {
+            const response = await fetch('/api/printer/list', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await response.json();
+
+            const printerStatus = document.getElementById('printerStatus');
+            const printerDot = document.getElementById('printerDot');
+            const printerInfo = document.getElementById('printerInfo');
+            const printerSelectContainer = document.getElementById('printerSelectContainer');
+            const printerDropdown = document.getElementById('printerDropdown');
+            const printFormDropdown = document.getElementById('printer');
+
+            if (data.success && data.printers && data.printers.length > 0) {
+                // Update status indicator
+                printerStatus.classList.add('connected');
+                printerDot.classList.add('connected');
+
+                // Update info text
+                if (data.printers.length === 1) {
+                    printerInfo.innerHTML = `<p><strong>${data.printers[0]}</strong></p><p style="color: #28a745; font-size: 0.85rem;">Ready to print</p>`;
+                    selectedPrinter = data.printers[0];
+                } else {
+                    printerInfo.innerHTML = `<p><strong>${data.printers.length} printers available</strong></p><p style="color: #28a745; font-size: 0.85rem;">Select a printer below</p>`;
+
+                    // Show dropdown for multiple printers
+                    printerSelectContainer.style.display = 'block';
+                    printerDropdown.innerHTML = '';
+
+                    data.printers.forEach((printer, index) => {
+                        const option = document.createElement('option');
+                        option.value = printer;
+                        option.textContent = printer;
+                        printerDropdown.appendChild(option);
+
+                        if (index === 0) {
+                            selectedPrinter = printer;
+                        }
+                    });
+
+                    // Update selected printer when dropdown changes
+                    printerDropdown.addEventListener('change', (e) => {
+                        selectedPrinter = e.target.value;
+                        updatePrintFormDropdown(data.printers, selectedPrinter);
+                    });
+                }
+
+                // Update print form dropdown
+                updatePrintFormDropdown(data.printers, selectedPrinter);
+            } else {
+                // No printers found
+                printerStatus.classList.add('disconnected');
+                printerDot.classList.add('disconnected');
+                printerInfo.innerHTML = '<p style="color: #dc3545;">No printers detected</p><p style="font-size: 0.85rem;">Please configure a printer in your system</p>';
+
+                printFormDropdown.innerHTML = '<option value="">No printers available</option>';
+            }
+        } catch (error) {
+            console.error('Error loading printers:', error);
+            const printerInfo = document.getElementById('printerInfo');
+            printerInfo.innerHTML = '<p class="error-message">Failed to load printer status</p>';
+        }
+    }
+
+    // Update the print form dropdown
+    function updatePrintFormDropdown(printers, selected) {
+        const printFormDropdown = document.getElementById('printer');
+        printFormDropdown.innerHTML = '';
+
+        printers.forEach(printer => {
+            const option = document.createElement('option');
+            option.value = printer;
+            option.textContent = printer;
+            if (printer === selected) {
+                option.selected = true;
+            }
+            printFormDropdown.appendChild(option);
+        });
+    }
+
+    // Fetch and display scanner status
+    async function loadScannerStatus() {
+        try {
+            const response = await fetch('/api/settings', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await response.json();
+
+            const scannerStatus = document.getElementById('scannerStatus');
+            const scannerDot = document.getElementById('scannerDot');
+            const scannerInfo = document.getElementById('scannerInfo');
+
+            if (data.success && data.config && data.config.scanner) {
+                const scanner = data.config.scanner;
+
+                // Update status indicator (assume connected if configured)
+                scannerStatus.classList.add('connected');
+                scannerDot.classList.add('connected');
+
+                // Display scanner info
+                const protocol = scanner.protocol ? scanner.protocol.toUpperCase() : 'Unknown';
+                const ip = scanner.ip || 'Not configured';
+                const resolution = scanner.resolution || 300;
+
+                scannerInfo.innerHTML = `
+                    <p><strong>${protocol} Scanner</strong></p>
+                    <p style="font-size: 0.85rem;">IP: ${ip}</p>
+                    <p style="font-size: 0.85rem;">Resolution: ${resolution} DPI</p>
+                    <p style="color: #28a745; font-size: 0.85rem;">Ready to scan</p>
+                `;
+            } else {
+                // Scanner not configured
+                scannerStatus.classList.add('disconnected');
+                scannerDot.classList.add('disconnected');
+                scannerInfo.innerHTML = '<p style="color: #dc3545;">Scanner not configured</p><p style="font-size: 0.85rem;">Please configure in <a href="/api/settings">Settings</a></p>';
+            }
+        } catch (error) {
+            console.error('Error loading scanner status:', error);
+            const scannerInfo = document.getElementById('scannerInfo');
+            scannerInfo.innerHTML = '<p class="error-message">Failed to load scanner status</p>';
+        }
+    }
+
+    // Load device status on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadPrinters();
+        loadScannerStatus();
+    });
+</script>
+{% endblock %}
