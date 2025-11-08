@@ -1,20 +1,114 @@
-version: '3'
+# Docker Compose configuration for Scanner Server
+# For production use, create a .env file with your specific settings
 
 services:
   scanner-server:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: scanner-server
-    ports:
-      - "5000:5000"
-      - "631:631"
-    volumes:
-      - ./config:/app/config
-      - scanner_data:/data/scan
-    environment:
-      - CONFIG_DIR=/app/config
-      - SCANNER_IP=192.168.2.82
-    restart: unless-stopped
-    privileged: true  # Needed for SANE scanner access
+    hostname: scanner-server
 
+    # Port mappings
+    ports:
+      - "${WEB_PORT:-5000}:5000"    # Web interface
+      - "${CUPS_PORT:-631}:631"     # CUPS web interface
+
+    # Volume mounts
+    volumes:
+      - ./config:/config:rw              # Configuration directory
+      - scanner_data:/data/scan:rw       # Scanned documents storage
+      # Optional: Mount for custom Tesseract training data
+      # - ./tessdata:/usr/share/tesseract-ocr/4.00/tessdata:ro
+
+    # Environment variables
+    environment:
+      # Application settings
+      - CONFIG_DIR=/config
+      - DATA_DIR=/data/scan
+
+      # Scanner configuration
+      - SCANNER_IP=${SCANNER_IP:-192.168.1.100}
+      - SCANNER_PROTOCOL=${SCANNER_PROTOCOL:-escl}
+      - SCANNER_PORT=${SCANNER_PORT:-443}
+
+      # Flask settings
+      - FLASK_APP=backend.app
+      - FLASK_DEBUG=${FLASK_DEBUG:-0}
+
+      # Gunicorn settings (production mode)
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-2}
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-120}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # OCR settings
+      - OCR_LANGUAGE=${OCR_LANGUAGE:-eng}
+
+      # Discord webhook (optional)
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+
+      # Timezone
+      - TZ=${TZ:-UTC}
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Security context
+    # Privileged mode required for SANE scanner access to network devices
+    privileged: true
+
+    # Alternative to privileged (more secure, but may not work with all scanners):
+    # cap_add:
+    #   - DAC_READ_SEARCH
+    #   - NET_RAW
+    # devices:
+    #   - /dev/bus/usb:/dev/bus/usb
+
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Health check (inherited from Dockerfile, can be overridden here)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Labels for organization
+    labels:
+      - "com.scanner-server.description=Document Scanning and Management Server"
+      - "com.scanner-server.version=2.0.0"
+      - "traefik.enable=false"  # Set to true if using Traefik reverse proxy
+
+    # Network configuration
+    networks:
+      - scanner-network
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volumes
 volumes:
   scanner_data:
+    driver: local
+    labels:
+      - "com.scanner-server.description=Scanned documents storage"
+
+# Networks
+networks:
+  scanner-network:
+    driver: bridge
+    labels:
+      - "com.scanner-server.description=Scanner server network"
